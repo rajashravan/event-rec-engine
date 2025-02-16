@@ -35,9 +35,10 @@ class StubHub:
         for user in users:
             self.users[user.id] = user
         
-        self.event_categories = defaultdict(list) # key is a category, value is a list of event ids
-        self.user_categories = defaultdict(list)
+        self.event_categories = defaultdict(set) # key is a category, value is a list of event ids
+        self.user_categories = defaultdict(set)
         self.recs = set()
+        self.sent_messages = set()
         self.process()
     
     def process(self):
@@ -47,12 +48,12 @@ class StubHub:
         # make user cats
         for user in self.users.values():
             for user_cat in user.fav_categories.keys():
-                self.user_categories[user_cat].append(user.id)
+                self.user_categories[user_cat].add(user.id)
                 
         # make event cats
         for event in self.events.values():
             for event_cat in event.categories.keys():
-                self.event_categories[event_cat].append(event.id)
+                self.event_categories[event_cat].add(event.id)
                 
         # match recos
         for event_cat, event_ids in self.event_categories.items():
@@ -67,9 +68,6 @@ class StubHub:
             for user_id in matching_user_ids:
                 for event_id in event_ids:
                     self.recs.add((event_id, user_id))
-            
-    
-	# TODO: add_event and add_user, and send_emails and some in-memory-store of sent emails
  
     def add_event(self, event):
         # add an event
@@ -77,6 +75,7 @@ class StubHub:
         
         # update recs
         for event_cat in event.categories:
+            self.event_categories[event_cat].add(event.id)
             for user_id in self.user_categories[event_cat]:
                 self.recs.add((event.id, user_id))
             
@@ -86,6 +85,7 @@ class StubHub:
         
         # update recs
         for user_cat in user.fav_categories:
+            self.user_categories[user_cat].add(user.id)
             for event_id in self.event_categories[user_cat]:
                 self.recs.add((event_id, user.id))
     
@@ -102,6 +102,16 @@ class StubHub:
     def print_recs(self):
         for rec in self.recs:
             print(rec)
+    
+    def send_messages(self):
+        # send messages based on recs
+        for rec in self.recs:
+            if rec in self.sent_messages:
+                continue
+            self.sent_messages.add(rec)
+            event_id = rec[0]
+            user_id = rec[1]
+            print(f"Recing event {event_id} to {user_id}")
 
 
 # main
@@ -120,9 +130,13 @@ engine = StubHub(
 engine.add_event(Event(['folk']))
 engine.add_user(User(['rap']))
 
+engine.add_event(Event(['unknown_cat_1']))
+engine.add_user(User(['unknown_cat_2']))
+
 engine.print_events()
 engine.print_users()
 
 # print(engine.event_categories)
 # print(engine.user_categories)
-engine.print_recs()
+engine.send_messages()
+engine.send_messages()
